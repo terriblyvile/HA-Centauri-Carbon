@@ -1,4 +1,5 @@
 import aiohttp
+import asyncio
 import json
 import logging
 import uuid
@@ -7,28 +8,43 @@ import time
 _LOGGER = logging.getLogger(__name__)
 
 class CentauriWebSocketClient:
-    def __init__(self, hass, ip_address):
+    def __init__(self, hass, ip_address, reconnect_interval: int = 15):
         self._hass = hass
         self._ws = None
         self.data = {}
         self.ip = ip_address
         self.url = f"ws://{ip_address}:3030/websocket"
+        self.reconnect_interval = reconnect_interval
 
     async def connect(self):
-        session = aiohttp.ClientSession()
-        try:
-            self._ws = await session.ws_connect(self.url)
-            _LOGGER.info("Connected to Centauri WebSocket")
+        """Connect and listen to the Centauri WebSocket with auto-reconnect.
 
-            async for msg in self._ws:
-                if msg.type == aiohttp.WSMsgType.TEXT:
-                    payload = json.loads(msg.data)
-                    _LOGGER.debug(f"Received WS payload: {payload}")
-                    self._handle_message(payload)
-        except Exception as e:
-            _LOGGER.error(f"WebSocket connection failed: {e}")
-        finally:
-            await session.close()
+        If the connection drops or fails, it will be retried after
+        ``self.reconnect_interval`` seconds until Home Assistant stops.
+        """
+        while True:
+            session = aiohttp.ClientSession()
+            try:
+                self._ws = await session.ws_connect(self.url)
+                _LOGGER.info("Connected to Centauri WebSocket")
+
+                async for msg in self._ws:
+                    if msg.type == aiohttp.WSMsgType.TEXT:
+                        payload = json.loads(msg.data)
+                        _LOGGER.debug(f"Received WS payload: {payload}")
+                        self._handle_message(payload)
+            except asyncio.CancelledError:
+                _LOGGER.debug("WebSocket task cancelled")
+                break
+            except Exception as e:
+                _LOGGER.error(f"WebSocket connection failed: {e}")
+            finally:
+                await session.close()
+
+            if not self._hass.is_running:
+                break
+
+            await asyncio.sleep(self.reconnect_interval)
 
     async def send_command(self, data: dict):
         if not self._ws or self._ws.closed:

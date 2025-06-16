@@ -5,10 +5,9 @@ I am selling my Centauri Carbon relatively soon so I will not be able to provide
 
 # **Installation**
 
-1. Unzip the files
-2. Add the "centauri_carbon" folder to your custom components folder
-3. Restart Home Assistant
-4. Once restarted, add the integration as you normally would and input your local IP for the Centauri Carbon. The accepted format is 192.168.x.xxx. No slashes or http/https.
+1. Install through [HACS](https://hacs.xyz/) by adding this repository as a custom repository, **or** manually copy the `custom_components/centauri_carbon` folder into your Home Assistant `custom_components` directory.
+2. Restart Home Assistant.
+3. Once restarted, add the integration as you normally would and input your local IP for the Centauri Carbon. The accepted format is `192.168.x.xxx` with no prefixes or slashes.
 
 # **Currently Supported Sensors:**
 
